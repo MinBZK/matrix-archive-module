@@ -1,0 +1,49 @@
+server_name: "localhost"
+pid_file: /data/homeserver.pid
+
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    resources:
+      - names: [client, federation]
+        compress: false
+
+database:
+  name: sqlite3
+  args:
+    database: /data/homeserver.sqlite3
+
+log_config: /conf/log.config
+media_store_path: /data/media_store
+signing_key_path: /data/localhost.signing.key
+
+# Secrets — change these for any non-local deployment
+registration_shared_secret: "dev_registration_secret"
+macaroon_secret_key: "dev_macaroon_secret"
+form_secret: "dev_form_secret"
+
+report_stats: false
+
+# Allow easy account creation for local dev
+enable_registration: true
+enable_registration_without_verification: true
+
+# -------------------------------------------------------
+# Archive module
+# -------------------------------------------------------
+modules:
+  - module: archive.ArchiveModule
+    config:
+      database:
+        user: archivemodule
+        password: changethis
+        host: db
+        port: 5432
+        database: chatarchive
+  - module: archive.ArchiveBot
+    config: 
+      bot_user_id: "@archivebot:localhost" 
+
+trusted_key_servers: []

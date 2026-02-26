@@ -1,0 +1,120 @@
+services:
+  synapse:
+    image: matrixdotorg/synapse:v1.148.0
+    environment:
+      SYNAPSE_SERVER_NAME: localhost
+      SYNAPSE_CONFIG_DIR: /conf
+      SYNAPSE_DATA_DIR: /data
+      SYNAPSE_HTTP_PORT: 8008
+      SYNAPSE_REPORT_STATS: "yes"
+      PYTHONPATH: /modules
+    volumes:
+      - ./src/module:/modules:ro
+      - ./synapse/logs:/logs
+      - ./synapse/data:/data
+      - ./synapse/conf:/conf
+    ports:
+      - "8008:8008"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fSs http://localhost:8008/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  element-web: 
+    image: vectorim/element-web:v1.12.11
+    ports:
+      - "8000:80"
+    environment:
+      - SYNAPSE_URL=http://localhost:8008
+    volumes:
+      - ./synapse/conf/config.json:/app/config.json
+
+    depends_on:
+      synapse:
+        condition: service_healthy
+
+  bot: 
+    build: 
+      context: ./src/bot
+    restart: unless-stopped
+    environment:
+      - MATRIX_HOME_SERVER=http://synapse:8008
+      - MATRIX_BOT_USER_ID=archivebot
+      - MATRIX_BOT_USER_PASSWORD=archivebotpassword
+      - STORE_FOLDER=/data/store
+      - SESSION_DETAIL_FILE=/data/credentials.json
+      - DATABASE_USER=archivemodule
+      - DATABASE_PASSWORD=changethis
+      - DATABASE_HOST=db
+      - DATABASE_NAME=chatarchive
+    volumes:
+        - ./synapse/bot_data:/data/
+    depends_on:
+      synapse:
+        condition: service_healthy
+
+  synapse-init-admin:
+    image: matrixdotorg/synapse:v1.148.0
+    restart: "no"
+    depends_on:
+      synapse:
+        condition: service_healthy
+    volumes:
+      - ./synapse/conf:/conf
+    environment:
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-adminpassword}
+    entrypoint: >
+      /bin/bash -c "register_new_matrix_user --exists-ok -u $$ADMIN_USER -p $$ADMIN_PASSWORD -a -k dev_registration_secret http://synapse:8008"
+
+  synapse-init-archivebot:
+    image: matrixdotorg/synapse:v1.148.0
+    restart: "no"
+    depends_on:
+      synapse:
+        condition: service_healthy
+    volumes:
+      - ./synapse/conf:/conf
+    environment:
+      ARCHIVE_USER: ${ARCHIVE_USER:-archivebot}
+      ARCHIVE_PASSWORD: ${ARCHIVE_PASSWORD:-archivebotpassword}
+    entrypoint: >
+      /bin/bash -c "register_new_matrix_user --exists-ok -t bot -u $$ARCHIVE_USER -p $$ARCHIVE_PASSWORD --no-admin -k dev_registration_secret http://synapse:8008"
+
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changethis
+      POSTGRES_DB: postgres
+    volumes:
+      - archive-db-data:/var/lib/postgresql/data
+      - ./database/:/docker-entrypoint-initdb.d/:cached
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chatarchive"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  db-admin:
+    image: dpage/pgadmin4:9.12
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    environment:
+      - PGADMIN_LISTEN_PORT=${PGADMIN_LISTEN_PORT:-8080}
+      - PGADMIN_DEFAULT_PASSWORD=changethis
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-O", "-", "http://localhost:8080/misc/ping"]
+
+
+volumes:
+  archive-db-data:

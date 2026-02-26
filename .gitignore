@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Synapse generated data (signing key, SQLite DB, media)
+synapse/data/*
+synapse/logs/*
+synapse/bot_data/*
+!synapse/data/.gitkeep
+
+.pytest_cache/
+.ruff_cache/
