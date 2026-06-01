@@ -6,16 +6,16 @@ readme = "README.md"
 requires-python = ">=3.10.0,<4.0.0"
 dependencies = [
     "matrix-nio>=0.25.2",
-    "psycopg[binary]>=3.3.3",
+    "psycopg[binary]>=3.3.4",
 ]
 
 [dependency-groups]
 dev = [
-    "matrix-synapse>=1.152.0",
-    "pyright>=1.1.409",
-    "ruff>=0.15.12",
+    "matrix-synapse>=1.153.0",
+    "pyright>=1.1.410",
+    "ruff>=0.15.15",
     "pytest>=9.0.3",
-    "pytest-asyncio>=0.25",
+    "pytest-asyncio>=1.4.0",
     "httpx>=0.27",
 ]
 
